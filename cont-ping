@@ -20,6 +20,8 @@ for line in ping_proc.stdout:
     if ' '.join(line[:4]) == 'no answer yet for':
         #seq = int(line[4].split('=')[1])
         rtt = float('inf')
+    elif line[0] == 'From':
+        continue
     else:
         #length = int(line[0])
         #ip = line[3]
