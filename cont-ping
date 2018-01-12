@@ -1,0 +1,49 @@
+#!/usr/bin/python3
+from array import array
+import subprocess
+import sys
+import statistics
+
+ping_proc = subprocess.Popen(['ping', '-Oni.2', sys.argv[1]], stdout=subprocess.PIPE, bufsize=0)
+line = ping_proc.stdout.readline().decode('utf-8').split()
+ip = line[2][1:-1]
+ip_len = len(ip)
+data_size = 1024*1024
+latency = array('f', [float('nan')]*data_size)
+index = 0
+ping_count = 0
+sample_intervals = [10, 100, 1000, 10000, 100000, 1000000]
+stats = {}
+display_interval = 5
+for line in ping_proc.stdout:
+    line = line.decode('utf-8').split()
+    if ' '.join(line[:4]) == 'no answer yet for':
+        #seq = int(line[4].split('=')[1])
+        rtt = float('inf')
+    else:
+        #length = int(line[0])
+        #ip = line[3]
+        #seq = int(line[4].split('=')[1])
+        #ttl = int(line[5].split('=')[1])
+        rtt = float(line[6].split('=')[1])
+    latency[index] = rtt
+    index += 1
+    ping_count += 1
+    if index == data_size:
+        index = 0
+    for sample_interval in sample_intervals:
+        if ping_count % sample_interval == 0:
+            sample = [x for x in latency[index-sample_interval:index] if x != float('inf')]
+            stats[sample_interval] = (sample_interval, (sample_interval-len(sample))/sample_interval*100, min(sample), max(sample), sum(sample)/len(sample), statistics.stdev(sample))
+    if ping_count % display_interval == 0 and stats:
+        pkt_len = max([len(str(x)) for x in stats])
+        padding_left = int((pkt_len-ip_len+30)/2)
+        print('%sping statistics to %s' % (' '*padding_left, ip))
+        print('┌──'+'─'*pkt_len+'┬────────┬────────┬────────┬────────┬────────┐')
+        print('│'+' '*(pkt_len-3)+'#pkt'+('' if pkt_len<3 else ' ')+'│  loss% │   best │  worst │    avg │  stdev │')
+        print('├──'+'─'*pkt_len+'┼────────┼────────┼────────┼────────┼────────┤')
+        for sample_interval in sorted(stats.keys()):
+            print(('│ %'+str(pkt_len)+'d │ %6.2f │ %6.2f │ %6.2f │ %6.2f │ %6.2f │') % stats[sample_interval])
+        print('└──'+'─'*pkt_len+'┴────────┴────────┴────────┴────────┴────────┘')
+
+
