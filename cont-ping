@@ -36,7 +36,10 @@ for line in ping_proc.stdout:
     for sample_interval in sample_intervals:
         if ping_count % sample_interval == 0:
             sample = [x for x in latency[index-sample_interval:index] if x != float('inf')]
-            stats[sample_interval] = (sample_interval, (sample_interval-len(sample))/sample_interval*100, min(sample), max(sample), sum(sample)/len(sample), statistics.stdev(sample))
+            if sample:
+                stats[sample_interval] = (sample_interval, (sample_interval-len(sample))/sample_interval*100, min(sample), max(sample), sum(sample)/len(sample), float('nan') if len(sample)<2 else statistics.stdev(sample))
+            else:
+                stats[sample_interval] = (sample_interval, float('nan'), float('nan'), float('nan'), float('nan'), float('nan'))
     if ping_count % display_interval == 0 and stats:
         pkt_len = max([len(str(x)) for x in stats])
         padding_left = int((pkt_len-ip_len+30)/2)
